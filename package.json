@@ -9,5 +9,8 @@
   },
   "workspaces": [
     "./packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@onflow/rlp": "^1.2.3"
+  }
 }

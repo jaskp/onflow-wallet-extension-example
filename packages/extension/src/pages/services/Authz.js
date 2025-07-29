@@ -103,7 +103,9 @@ export default function Authz({ fclTabId }) {
         signedMessage
       ),
     });
-    setTxView("sending");
+
+    // Close the window immediately after sending
+    window.close();
   }
 
   function sendCancelToFCL() {

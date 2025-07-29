@@ -1,6 +1,4 @@
-import { WalletUtils } from "@onflow/fcl";
-
-const service = {
+const AuthnService = {
   f_type: "Service",
   f_vsn: "1.0.0",
   type: "authn",
@@ -19,4 +17,8 @@ const service = {
   },
 };
 
-WalletUtils.injectExtService(service);
+// Inject into window.fcl_extensions as per FCL Discovery documentation
+if (!Array.isArray(window.fcl_extensions)) {
+  window.fcl_extensions = [];
+}
+window.fcl_extensions.push(AuthnService);

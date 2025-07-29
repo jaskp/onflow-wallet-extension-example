@@ -3,9 +3,10 @@ import { SHA3 } from "sha3";
 import forge from "node-forge";
 import * as fcl from "@onflow/fcl";
 import * as t from "@onflow/types";
-var Buffer = require("buffer/").Buffer;
+import { Buffer } from "buffer";
 const p256 = new EC("p256");
 const secp256 = new EC("secp256k1");
+import { sha256 } from "@noble/hashes/sha2.js";
 
 // Takes in a msg that is already in hex form, and a
 // hashAlg in flow's key format for hash algorithms
@@ -16,9 +17,7 @@ const hashMsgHex = (msgHex, hashAlg) => {
     sha.update(Buffer.from(msgHex, "hex"));
     return sha.digest();
   } else if (hashAlg === 1) {
-    const md = forge.md.sha256.create();
-    md.update(Buffer.from(msgHex, "hex"));
-    return md.digest();
+    return sha256(Buffer.from(msgHex, "hex"));
   } else {
     throw new Error("Unsupported hash alg provided");
   }
@@ -46,7 +45,7 @@ export const verifyUserSignature = async (
   const CODE = `
     import Crypto
 
-    pub fun main(rawPublicKeys: [String], weights: [UFix64], signatures: [String], signedData: String): Bool {
+    access(all) fun main(rawPublicKeys: [String], weights: [UFix64], signatures: [String], signedData: String): Bool {
       let keyList = Crypto.KeyList()
       var i = 0
       for rawPublicKey in rawPublicKeys {

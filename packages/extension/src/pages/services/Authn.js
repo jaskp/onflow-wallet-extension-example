@@ -71,11 +71,15 @@ export default function Authn({ fclTabId }) {
         services: services,
       },
     });
+
+    // Close the window immediately
     window.close();
   }
 
   function sendCancelToFCL() {
     chrome.tabs.sendMessage(fclTabId, { type: "FCL:VIEW:CLOSE" });
+
+    // Close the window immediately
     window.close();
   }
 

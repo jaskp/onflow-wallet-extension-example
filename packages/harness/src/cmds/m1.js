@@ -1,19 +1,22 @@
-import { mutate } from "@onflow/fcl"
-import { yup, nope } from "../util"
-import * as fcl from "@onflow/fcl"
+import { yup, nope } from "../util";
+import * as fcl from "@onflow/fcl";
 
 export const LABEL = "Mutate 1 (no args)";
 export const CMD = async () => {
   // prettier-ignore
   try {
-    const response = await mutate({
-      cadence: `
-        transaction() {
-          prepare(acct: AuthAccount) {
-            log(acct)
-          }
+  const response = await fcl.mutate({
+    cadence: `
+    transaction {
+	      prepare(acct: auth(Storage) &Account) {
+      
+        } 
+      
+        execute {
+      
         }
-      `,
+      }
+  `,
       limit: 50,
     })
 

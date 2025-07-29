@@ -12,7 +12,7 @@ function createPopup(hostTabId, service) {
       tabId: hostTabId,
     });
     const popUrl = chrome.runtime.getURL(
-      `index.html?${tabIdParam}#/${service.type}`
+      `src/index.html?${tabIdParam}#/${service.type}`
     );
 
     chrome.windows

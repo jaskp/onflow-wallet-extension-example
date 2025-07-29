@@ -1,7 +1,7 @@
-import * as fcl from "@onflow/fcl"
+import { config } from "@onflow/fcl"
+import { send as httpSend } from "@onflow/transport-http"
 
-fcl
-  .config()
+config()
   .put("accessNode.api", "https://rest-testnet.onflow.org")
-  .put("flow.network", "testnet")
+  .put("sdk.transport", httpSend)
   .put("discovery.wallet", "https://fcl-discovery.onflow.org/testnet/authn")

@@ -20,17 +20,17 @@ function Popup({ fclTabId }) {
     load();
   }, []);
 
-  useEffect(() => {
-    window.addEventListener("beforeunload", cancelOnClose);
-    return () => {
-      window.removeEventListener("beforeunload", cancelOnClose);
-    };
-  }, []);
+  // useEffect(() => {
+  //   window.addEventListener("beforeunload", cancelOnClose);
+  //   return () => {
+  //     window.removeEventListener("beforeunload", cancelOnClose);
+  //   };
+  // }, []);
 
-  const cancelOnClose = (e) => {
-    e.preventDefault();
-    chrome.tabs.sendMessage(fclTabId, { type: "FCL:VIEW:CLOSE" });
-  };
+  // const cancelOnClose = (e) => {
+  //   e.preventDefault();
+  //   chrome.tabs.sendMessage(fclTabId, { type: "FCL:VIEW:CLOSE" });
+  // };
 
   if (loading) {
     return null;
