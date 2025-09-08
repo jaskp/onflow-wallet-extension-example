@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FCL Harness (No Build)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .panel {
+            border: 2px solid;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px;
+            flex: 1;
+            min-width: 400px;
+        }
+        .flow-panel {
+            border-color: #00D4AA;
+            background-color: #f8fffd;
+        }
+        .flow-panel h2 {
+            color: #00D4AA;
+            margin-top: 0;
+        }
+        .evm-panel {
+            border-color: #627EEA;
+            background-color: #f7f9ff;
+        }
+        .evm-panel h2 {
+            color: #627EEA;
+            margin-top: 0;
+        }
+        .commands {
+            list-style: none;
+            padding: 0;
+        }
+        .commands li {
+            margin: 10px 0;
+        }
+        .commands button {
+            padding: 8px 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+        .commands button:hover {
+            background: #f0f0f0;
+        }
+        .state-display {
+            font-size: 12px;
+            max-height: 300px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .connect-button {
+            padding: 10px 20px;
+            background: #627EEA;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .connect-button:hover {
+            background: #4f69d1;
+        }
+        .connected {
+            background: #00D4AA;
+        }
+        .connected:hover {
+            background: #00b896;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <h1 style="text-align: center; color: #333;">Flow & EVM Harness (No Build)</h1>
+        <div class="container">
+            <!-- Flow Panel -->
+            <div class="panel flow-panel">
+                <h2>Flow Network</h2>
+                <ul class="commands">
+                    <li><button onclick="flowCommands.login()">Log In</button></li>
+                    <li><button onclick="flowCommands.logout()">Log Out</button></li>
+                    <li><button onclick="flowCommands.query1()">Query 1 (no args)</button></li>
+                    <li><button onclick="flowCommands.query2()">Query 2 (args)</button></li>
+                    <li><button onclick="flowCommands.mutate1()">Mutate 1 (no args)</button></li>
+                    <li><button onclick="flowCommands.mutate2()">Mutate 2 (args)</button></li>
+                </ul>
+                <div id="flow-state" class="state-display">
+                    Loading Flow state...
+                </div>
+            </div>
+            
+            <!-- EVM Panel -->
+            <div class="panel evm-panel">
+                <h2>Flow EVM Network</h2>
+                <button id="evm-connect" class="connect-button" onclick="evmCommands.toggleConnection()">
+                    Connect Wallet
+                </button>
+                <div id="evm-state" class="state-display">
+                    Not connected
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock FCL implementation for e2e testing
+        // This provides the same API and events as the real FCL but without external dependencies
+
+        // State management
+        let flowState = {
+            currentUser: {
+                loggedIn: false,
+                addr: null,
+                cid: null,
+                expiresAt: null,
+                f_type: "User",
+                f_vsn: "1.0.0",
+                services: []
+            },
+            config: {
+                "accessNode.api": "https://rest-testnet.onflow.org",
+                "discovery.wallet": "https://fcl-discovery.onflow.org/testnet/authn",
+                "sdk.transport": "HTTP"
+            }
+        };
+        
+        let evmState = {
+            isConnected: false,
+            address: null,
+            chain: null
+        };
+
+        // Mock FCL and types for global access
+        window.fcl = {
+            reauthenticate: () => mockLogin(),
+            unauthenticate: () => mockLogout(),
+            query: (opts) => mockQuery(opts),
+            mutate: (opts) => mockMutate(opts),
+            tx: (txId) => mockTransaction(txId),
+            currentUser: () => ({
+                subscribe: (callback) => {
+                    callback(flowState.currentUser);
+                    return () => {}; // unsubscribe function
+                }
+            }),
+            config: () => ({
+                subscribe: (callback) => {
+                    callback(flowState.config);
+                    return () => {}; // unsubscribe function
+                }
+            })
+        };
+
+        window.t = {
+            Int: "Int",
+            Address: "Address"
+        };
+
+        // Utility functions
+        const yup = tag => d => {
+            console.log(`${tag}`, d);
+            updateFlowDisplay();
+        };
+        
+        const nope = tag => d => {
+            console.error(`Oh No!! [${tag}]`, d);
+            updateFlowDisplay();
+        };
+
+        // Mock Flow functions
+        function mockLogin() {
+            console.log("Mock login initiated");
+            // Simulate login process
+            setTimeout(() => {
+                flowState.currentUser = {
+                    loggedIn: true,
+                    addr: "0x01cf0e2f2f715450",
+                    cid: "mock-cid-12345",
+                    expiresAt: Date.now() + 86400000, // 24 hours
+                    f_type: "User",
+                    f_vsn: "1.0.0",
+                    services: [
+                        {
+                            f_type: "Service",
+                            f_vsn: "1.0.0",
+                            type: "authn",
+                            method: "IFRAME/RPC",
+                            endpoint: "https://fcl-discovery.onflow.org/testnet/authn"
+                        }
+                    ]
+                };
+                updateFlowDisplay();
+                yup("LOGIN")("Login successful");
+            }, 1000);
+        }
+
+        function mockLogout() {
+            console.log("Mock logout initiated");
+            flowState.currentUser = {
+                loggedIn: false,
+                addr: null,
+                cid: null,
+                expiresAt: null,
+                f_type: "User",
+                f_vsn: "1.0.0",
+                services: []
+            };
+            updateFlowDisplay();
+            yup("LOGOUT")("Logout successful");
+        }
+
+        function mockQuery(opts) {
+            console.log("Mock query:", opts);
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    // Mock responses based on cadence
+                    if (opts.cadence.includes("return 7")) {
+                        resolve(7);
+                    } else if (opts.cadence.includes("a + b")) {
+                        resolve(12); // 5 + 7
+                    } else {
+                        resolve("mock-query-result");
+                    }
+                }, 500);
+            });
+        }
+
+        function mockMutate(opts) {
+            console.log("Mock mutate:", opts);
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const txId = "mock-tx-" + Math.random().toString(36).substr(2, 9);
+                    resolve(txId);
+                    
+                    // Trigger FLOW::TX event
+                    const event = new CustomEvent("FLOW::TX", {
+                        detail: {
+                            delta: { tag: "FINALIZED" },
+                            txId: txId
+                        }
+                    });
+                    window.dispatchEvent(event);
+                }, 1000);
+            });
+        }
+
+        function mockTransaction(txId) {
+            console.log("Mock transaction subscription for:", txId);
+            return {
+                subscribe: (callback) => {
+                    // Simulate transaction status updates
+                    setTimeout(() => callback({ status: 1, statusString: "PENDING" }), 100);
+                    setTimeout(() => callback({ status: 2, statusString: "FINALIZED" }), 1000);
+                    setTimeout(() => callback({ status: 4, statusString: "SEALED" }), 2000);
+                },
+                onceSealed: () => {
+                    return new Promise(resolve => {
+                        setTimeout(() => {
+                            resolve({ status: 4, statusString: "SEALED", txId });
+                        }, 2000);
+                    });
+                }
+            };
+        }
+
+        // Update display functions
+        function updateFlowDisplay() {
+            const flowStateEl = document.getElementById('flow-state');
+            flowStateEl.textContent = JSON.stringify({
+                currentUser: flowState.currentUser,
+                config: flowState.config
+            }, null, 2);
+        }
+
+        function updateEVMDisplay() {
+            const evmStateEl = document.getElementById('evm-state');
+            const connectBtn = document.getElementById('evm-connect');
+            
+            evmStateEl.textContent = JSON.stringify(evmState, null, 2);
+            connectBtn.textContent = evmState.isConnected ? 'Disconnect Wallet' : 'Connect Wallet';
+            connectBtn.className = `connect-button ${evmState.isConnected ? 'connected' : ''}`;
+        }
+
+        // Flow commands (matching original harness API)
+        window.flowCommands = {
+            async login() {
+                try {
+                    await mockLogin();
+                } catch (error) {
+                    nope("LOGIN")(error);
+                }
+            },
+
+            async logout() {
+                try {
+                    await mockLogout();
+                } catch (error) {
+                    nope("LOGOUT")(error);
+                }
+            },
+
+            async query1() {
+                try {
+                    const result = await mockQuery({
+                        cadence: `
+                            access(all) fun main(): Int {
+                                return 7
+                            }
+                        `,
+                    });
+                    yup("Q-1")(result);
+                } catch (error) {
+                    nope("Q-1")(error);
+                }
+            },
+
+            async query2() {
+                try {
+                    const result = await mockQuery({
+                        cadence: `
+                            access(all) fun main(a: Int, b: Int): Int {
+                                return a + b
+                            }
+                        `,
+                        args: (arg, t) => [
+                            arg("5", t.Int),
+                            arg("7", t.Int),
+                        ],
+                    });
+                    yup("Q-2")(result);
+                } catch (error) {
+                    nope("Q-2")(error);
+                }
+            },
+
+            async mutate1() {
+                try {
+                    const response = await mockMutate({
+                        cadence: `
+                            transaction {
+                                prepare(acct: auth(Storage) &Account) {
+                                
+                                } 
+                            
+                                execute {
+                            
+                                }
+                            }
+                        `,
+                        limit: 50,
+                    });
+
+                    yup("M-1")(response);
+
+                    window.fcl.tx(response).subscribe((txStatus) => {
+                        console.log("TX:STATUS", response, txStatus);
+                    });
+
+                    await window.fcl.tx(response).onceSealed();
+                } catch (error) {
+                    nope("M-1")(error);
+                }
+            },
+
+            async mutate2() {
+                try {
+                    const response = await mockMutate({
+                        cadence: `
+                            transaction(a: Int, b: Int, c: Address) {
+                                prepare(acct: auth(Storage) &Account) {
+                                    log(acct)
+                                    log(a)
+                                    log(b)
+                                    log(c)
+                                } 
+
+                                execute {
+                                    
+                                }
+                            }
+                        `,
+                        args: (arg, t) => [
+                            arg(6, t.Int),
+                            arg(7, t.Int),
+                            arg("0xba1132bc08f82fe2", t.Address),
+                        ],
+                        limit: 50,
+                    });
+
+                    yup("M-2")(response);
+
+                    window.fcl.tx(response).subscribe((txStatus) => {
+                        console.log("TX:STATUS", response, txStatus);
+                    });
+
+                    await window.fcl.tx(response).onceSealed();
+                } catch (error) {
+                    nope("M-2")(error);
+                }
+            }
+        };
+
+        // EVM commands
+        window.evmCommands = {
+            async toggleConnection() {
+                if (evmState.isConnected) {
+                    this.disconnect();
+                } else {
+                    await this.connect();
+                }
+            },
+
+            async connect() {
+                if (typeof window.ethereum !== 'undefined') {
+                    try {
+                        const accounts = await window.ethereum.request({ 
+                            method: 'eth_requestAccounts' 
+                        });
+                        
+                        if (accounts.length > 0) {
+                            evmState.address = accounts[0];
+                            evmState.isConnected = true;
+                            
+                            // Get chain info
+                            const chainId = await window.ethereum.request({ 
+                                method: 'eth_chainId' 
+                            });
+                            evmState.chain = { 
+                                id: parseInt(chainId, 16),
+                                name: chainId === '0x221' ? 'Flow EVM Testnet' : 
+                                      chainId === '0x2eb' ? 'Flow EVM' : `Chain ${chainId}`,
+                                nativeCurrency: {
+                                    decimals: 18,
+                                    name: 'Flow',
+                                    symbol: 'FLOW'
+                                }
+                            };
+                            
+                            updateEVMDisplay();
+                        }
+                    } catch (error) {
+                        console.error('Failed to connect wallet:', error);
+                        alert('Failed to connect wallet: ' + error.message);
+                    }
+                } else {
+                    // Mock connection for testing when no wallet is available
+                    evmState.isConnected = true;
+                    evmState.address = "0x1234567890123456789012345678901234567890";
+                    evmState.chain = {
+                        id: 545,
+                        name: "Flow EVM Testnet",
+                        nativeCurrency: {
+                            decimals: 18,
+                            name: 'Flow',
+                            symbol: 'FLOW'
+                        }
+                    };
+                    updateEVMDisplay();
+                    console.log("Mock EVM connection (no MetaMask detected)");
+                }
+            },
+
+            disconnect() {
+                evmState.isConnected = false;
+                evmState.address = null;
+                evmState.chain = null;
+                updateEVMDisplay();
+            }
+        };
+
+        // Event listeners (matching original harness)
+        window.addEventListener("FLOW::TX", (d) => {
+            console.log("FLOW::TX", d.detail.delta, d.detail.txId);
+            window.fcl.tx(d.detail.txId)
+                .subscribe((txStatus) => console.log("TX:STATUS", d.detail.txId, txStatus));
+        });
+
+        window.addEventListener("message", (d) => {
+            console.log("Harness Message Received", d.data);
+        });
+
+        // Initialize displays
+        updateFlowDisplay();
+        updateEVMDisplay();
+
+        console.log("No-build Flow & EVM Harness initialized");
+        console.log("Available globals: window.fcl, window.t, window.flowCommands, window.evmCommands");
+    </script>
+</body>
+</html>
